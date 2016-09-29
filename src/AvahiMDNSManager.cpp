@@ -463,12 +463,15 @@ public:
                 {
                     if (self->handler)
                     {
+                        char a[AVAHI_ADDRESS_STR_MAX];
+                        avahi_address_snprint(a, sizeof(a), address);
                         MDNSService service;
                         service.setInterfaceIndex(fromAvahiIfIndex(interface));
                         service.setName(fromAvahiStr(name));
                         service.setType(fromAvahiStr(type));
                         service.setDomain(fromAvahiStr(domain));
                         service.setHost(fromAvahiStr(host_name));
+                        service.setAddress(a);
                         service.setPort(port);
                         service.setTxtRecords(fromAvahiStringList(txt));
 

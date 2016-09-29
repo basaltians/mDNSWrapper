@@ -38,6 +38,7 @@ public:
         , type_()
         , domain_()
         , host_()
+        , address_()
         , port_()
         , txtRecords_()
         , subtypes_()
@@ -51,6 +52,7 @@ public:
         , type_()
         , domain_()
         , host_()
+        , address_()
         , port_()
         , txtRecords_()
         , subtypes_()
@@ -63,6 +65,7 @@ public:
         , type_(other.type_)
         , domain_(other.domain_)
         , host_(other.host_)
+        , address_(other.address_)
         , port_(other.port_)
         , txtRecords_(other.txtRecords_)
         , subtypes_(other.subtypes_)
@@ -75,6 +78,7 @@ public:
         , type_(std::move(other.type_))
         , domain_(std::move(other.domain_))
         , host_(std::move(other.host_))
+        , address_(std::move(other.address_))
         , port_(other.port_)
         , txtRecords_(std::move(other.txtRecords_))
         , subtypes_(std::move(other.subtypes_))
@@ -91,6 +95,7 @@ public:
             domain_ = other.domain_;
             host_ = other.host_;
             port_ = other.port_;
+            address_ = other.address_;
             txtRecords_ = other.txtRecords_;
             subtypes_ = other.subtypes_;
             id_ = other.id_;
@@ -108,6 +113,7 @@ public:
             domain_ = other.domain_;
             host_ = other.host_;
             port_ = other.port_;
+            address_ = other.address_;
             txtRecords_ = other.txtRecords_;
             subtypes_ = other.subtypes_;
             id_ = other.id_;
@@ -146,6 +152,23 @@ public:
     MDNSService & setHost(std::string && host)
     {
         host_ = std::move(host);
+        return *this;
+    }
+
+    const std::string & getAddress() const
+    {
+        return address_;
+    }
+
+    MDNSService & setAddress(const std::string & address)
+    {
+        host_ = address;
+        return *this;
+    }
+
+    MDNSService & setAddress(std::string && address)
+    {
+        address_ = std::move(address);
         return *this;
     }
 
@@ -273,6 +296,7 @@ private:
     std::string type_;                    // the service type followed by the protocol
     std::string domain_;                  // if not empty, specifies the domain on which to advertise the service
     std::string host_;                    // if not empty, specifies the SRV target host name.
+    std::string address_;                 // the address
     unsigned int port_;                   // the port, in network byte order, on which the service accepts connections.
     std::vector<std::string> txtRecords_; // TXT records
     std::vector<std::string> subtypes_;   // subtypes of the service
