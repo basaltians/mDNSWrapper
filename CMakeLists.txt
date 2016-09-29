@@ -72,17 +72,7 @@ else()
     add_library(mDNSWrapper "src/CommonMDNSManager.cpp" "src/DummyMDNSManager.cpp")
 endif()
 
-add_executable(test_mdnswrapper "src/testwrapper.cpp")
-target_link_libraries(test_mdnswrapper mDNSWrapper)
-
-add_executable(mdns-watch "src/mdns-watch.cpp")
-target_link_libraries(mdns-watch mDNSWrapper)
-
-add_executable(mdns-register "src/mdns-register.cpp")
-target_link_libraries(mdns-register mDNSWrapper)
-
 # Install
 
-install(TARGETS test_mdnswrapper mdns-watch mdns-register DESTINATION bin)
 install(TARGETS mDNSWrapper DESTINATION lib)
 install(FILES src/MDNSManager.hpp DESTINATION include)
