@@ -52,6 +52,12 @@ void MDNSManager::registerService(MDNSService &service)
 
 }
 
+
+void MDNSManager::updateService(MDNSService &service)
+{
+
+}
+
 void MDNSManager::unregisterService(MDNSService &service)
 {
 

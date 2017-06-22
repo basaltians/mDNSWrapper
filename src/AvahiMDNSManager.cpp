@@ -866,6 +866,24 @@ void MDNSManager::registerService(MDNSService &service)
     pimpl_->registerMissingServices(pimpl_->client);
 }
 
+
+void MDNSManager::updateService(MDNSService &service)
+{
+    if (service.getId() == MDNSService::NO_SERVICE)
+        throw std::logic_error("Service was not registered");
+
+    ImplLockGuard g(pimpl_->mutex);
+
+    const MDNSService::Id serviceId = service.getId();
+    auto it = pimpl_->serviceRecords.find(serviceId);
+    if (it != pimpl_->serviceRecords.end())
+    {
+        it->second.resetServices();
+        it->second.serviceName = service.getName();
+        it->second.registerMissingServices(pimpl_->client);
+    }
+}
+
 void MDNSManager::unregisterService(MDNSService &service)
 {
     if (service.getId() == MDNSService::NO_SERVICE)

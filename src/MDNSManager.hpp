@@ -347,6 +347,8 @@ public:
 
     void registerService(MDNSService &service);
 
+    void updateService(MDNSService &service);
+
     void unregisterService(MDNSService &service);
 
     /**

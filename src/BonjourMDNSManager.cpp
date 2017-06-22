@@ -722,6 +722,12 @@ void MDNSManager::registerService(MDNSService &service)
     }
 }
 
+void MDNSManager::updateService(MDNSService &service)
+{
+    unregisterService(service);
+    registerService(service);
+}
+
 void MDNSManager::unregisterService(MDNSService &service)
 {
     ImplLockGuard g(pimpl_->mutex);
