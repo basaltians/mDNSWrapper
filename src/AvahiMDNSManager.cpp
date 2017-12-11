@@ -283,10 +283,13 @@ public:
 
             if (services.empty())
             {
-                avahi_entry_group_reset(group);
-                avahi_entry_group_free(group);
+                if (group)
+                {
+                    avahi_entry_group_reset(group);
+                    avahi_entry_group_free(group);
+                    group = 0;
+                }
                 nextToRegister = 0;
-                group = 0;
                 return true;
             }
 
