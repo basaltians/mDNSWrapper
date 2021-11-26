@@ -744,6 +744,7 @@ void MDNSManager::unregisterService(MDNSService &service)
 
 void MDNSManager::registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                          MDNSInterfaceIndex interfaceIndex,
+                                         MDNSProto protocol, // not supported (yet)
                                          const std::string &type,
                                          const std::vector<std::string> *subtypes,
                                          const std::string &domain)

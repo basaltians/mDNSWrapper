@@ -118,6 +118,16 @@ inline MDNSInterfaceIndex fromAvahiIfIndex(AvahiIfIndex i)
     return static_cast<MDNSInterfaceIndex>(i);
 }
 
+inline AvahiProtocol toAvahiProtocol(MDNSProto p)
+{
+    return static_cast<AvahiProtocol>(p);
+}
+
+inline MDNSProto fromAvahiProtocol(AvahiProtocol p)
+{
+    return static_cast<MDNSProto>(p);
+}
+
 AvahiStringList * toAvahiStringList(const std::vector<std::string> & data)
 {
     AvahiStringList * list = 0;
@@ -535,7 +545,7 @@ public:
                                the callback function is called the server will free
                                the resolver for us. */
 
-                            if (!(avahi_service_resolver_new(client, interface, protocol, name, type, domain, AVAHI_PROTO_UNSPEC,
+                            if (!(avahi_service_resolver_new(client, interface, protocol, name, type, domain, protocol,
                                                              (AvahiLookupFlags)0, resolveCB, userdata)))
                                 self->pimpl.avahiError("Failed to resolve service '" + fromAvahiStr(name) + "'", client);
                         }
@@ -775,6 +785,7 @@ public:
 
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
+                                MDNSProto protocol,
                                 const std::string &type,
                                 const std::string &domain)
     {
@@ -790,7 +801,7 @@ public:
 
         AvahiServiceBrowser *sb = avahi_service_browser_new(client,
                                                             toAvahiIfIndex(interfaceIndex),
-                                                            AVAHI_PROTO_UNSPEC,
+                                                            toAvahiProtocol(protocol),
                                                             toAvahiStr(type),
                                                             toAvahiStr(domain),
                                                             (AvahiLookupFlags)0,
@@ -920,6 +931,7 @@ void MDNSManager::unregisterService(MDNSService &service)
 
 void MDNSManager::registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                          MDNSInterfaceIndex interfaceIndex,
+                                         MDNSProto protocol,
                                          const std::string &type,
                                          const std::vector<std::string> *subtypes,
                                          const std::string &domain)
@@ -935,12 +947,12 @@ void MDNSManager::registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser
         for (auto it = subtypes->begin(), eit = subtypes->end(); it != eit; ++it)
         {
             subtype = it->empty() ? type : (*it+"._sub."+type);
-            pimpl_->registerServiceBrowser(browser, interfaceIndex, subtype, domain);
+            pimpl_->registerServiceBrowser(browser, interfaceIndex, protocol, subtype, domain);
         }
     }
     else
     {
-        pimpl_->registerServiceBrowser(browser, interfaceIndex, type, domain);
+        pimpl_->registerServiceBrowser(browser, interfaceIndex, protocol, type, domain);
     }
 }
 

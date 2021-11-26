@@ -22,6 +22,12 @@ namespace MDNS
 typedef uint32_t MDNSInterfaceIndex;
 const MDNSInterfaceIndex MDNS_IF_ANY = 0; // use any interface for the service
 
+enum MDNSProto {
+    MDNS_PROTO_INET  = 0,
+    MDNS_PROTO_INET6 = 1,
+    MDNS_PROTO_ANY   = -1
+};
+
 class MDNSService;
 
 class MDNSService
@@ -358,12 +364,14 @@ public:
      */
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
+                                MDNSProto protocol,
                                 const std::string &type,
                                 const std::string &domain)
     {
         // receive available service types when type is empty
         registerServiceBrowser(browser,
                                interfaceIndex,
+                               protocol,
                                type.empty() ? "_services._dns-sd._udp" : type,
                                static_cast<std::vector<std::string> *>(0),
                                domain);
@@ -376,6 +384,7 @@ public:
      */
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
+                                MDNSProto protocol,
                                 const std::string &type,
                                 const std::vector<std::string> &subtypes,
                                 const std::string &domain)
@@ -383,6 +392,7 @@ public:
         // receive available service types when type is empty
         registerServiceBrowser(browser,
                                interfaceIndex,
+                               protocol,
                                type.empty() ? "_services._dns-sd._udp" : type,
                                &subtypes,
                                domain);
@@ -411,6 +421,7 @@ private:
 
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
+                                MDNSProto protocol,
                                 const std::string &type,
                                 const std::vector<std::string> *subtypes,
                                 const std::string &domain);
