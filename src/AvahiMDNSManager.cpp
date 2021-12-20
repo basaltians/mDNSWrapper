@@ -931,10 +931,10 @@ void MDNSManager::unregisterService(MDNSService &service)
 
 void MDNSManager::registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                          MDNSInterfaceIndex interfaceIndex,
-                                         MDNSProto protocol,
                                          const std::string &type,
                                          const std::vector<std::string> *subtypes,
-                                         const std::string &domain)
+                                         const std::string &domain,
+                                         MDNSProto protocol)
 {
     if (type.empty())
         throw std::logic_error("type argument can't be empty");
