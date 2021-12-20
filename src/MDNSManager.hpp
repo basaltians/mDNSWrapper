@@ -364,17 +364,17 @@ public:
      */
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
-                                MDNSProto protocol,
                                 const std::string &type,
-                                const std::string &domain)
+                                const std::string &domain,
+                                MDNSProto protocol = MDNS_PROTO_ANY)
     {
         // receive available service types when type is empty
         registerServiceBrowser(browser,
                                interfaceIndex,
-                               protocol,
                                type.empty() ? "_services._dns-sd._udp" : type,
                                static_cast<std::vector<std::string> *>(0),
-                               domain);
+                               domain,
+                               protocol);
     }
 
     /**
@@ -384,18 +384,18 @@ public:
      */
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
-                                MDNSProto protocol,
                                 const std::string &type,
                                 const std::vector<std::string> &subtypes,
-                                const std::string &domain)
+                                const std::string &domain,
+                                MDNSProto protocol = MDNS_PROTO_ANY)
     {
         // receive available service types when type is empty
         registerServiceBrowser(browser,
                                interfaceIndex,
-                               protocol,
                                type.empty() ? "_services._dns-sd._udp" : type,
                                &subtypes,
-                               domain);
+                               domain,
+                               protocol);
     }
 
     /**
@@ -421,10 +421,10 @@ private:
 
     void registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser,
                                 MDNSInterfaceIndex interfaceIndex,
-                                MDNSProto protocol,
                                 const std::string &type,
                                 const std::vector<std::string> *subtypes,
-                                const std::string &domain);
+                                const std::string &domain,
+                                MDNSProto protocol = MDNS_PROTO_ANY);
 
     class PImpl;
     std::unique_ptr<PImpl> pimpl_;
