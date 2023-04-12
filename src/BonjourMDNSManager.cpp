@@ -19,6 +19,7 @@ typedef int pid_t;
 #include <sys/time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #endif
 
 #include <dns_sd.h>
@@ -453,6 +454,7 @@ public:
                 std::string name = decodeDNSName(fromDnsSdStr(fullname));
                 std::string suffix = std::string(".") + rr->type + rr->domain;
                 std::string host = fromDnsSdStr(hosttarget);
+                hostent* host_struct = gethostbyname(hosttarget);
 
                 if (strEndsWith(name, suffix))
                 {
@@ -464,6 +466,10 @@ public:
                 removeTrailingDot(rr->domain);
                 removeTrailingDot(host);
 
+                if (host_struct->h_length > 0) {
+                    std::string hostip = inet_ntoa(**(struct in_addr **) host_struct->h_addr_list);
+                    service.setAddress(std::move(hostip));
+                }
                 service.setName(std::move(name));
                 service.setType(std::move(rr->type));
                 service.setDomain(std::move(rr->domain));
