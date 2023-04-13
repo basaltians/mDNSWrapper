@@ -454,7 +454,6 @@ public:
                 std::string name = decodeDNSName(fromDnsSdStr(fullname));
                 std::string suffix = std::string(".") + rr->type + rr->domain;
                 std::string host = fromDnsSdStr(hosttarget);
-                hostent* host_struct = gethostbyname(hosttarget);
 
                 if (strEndsWith(name, suffix))
                 {
@@ -466,9 +465,28 @@ public:
                 removeTrailingDot(rr->domain);
                 removeTrailingDot(host);
 
-                if (host_struct->h_length > 0) {
-                    std::string hostip = inet_ntoa(**(struct in_addr **) host_struct->h_addr_list);
-                    service.setAddress(std::move(hostip));
+                int status;
+                struct addrinfo hints;
+                struct addrinfo *result;
+                memset(&hints, 0, sizeof(hints));
+                hints.ai_family = AF_UNSPEC;
+                hints.ai_socktype = SOCK_STREAM;
+                hints.ai_flags = AI_PASSIVE;
+                if ((status = getaddrinfo(hosttarget, NULL, &hints, &result)) == 0 && result != NULL) {
+                    if (result->ai_family == AF_INET) {
+                        char address[INET_ADDRSTRLEN];
+                        struct sockaddr_in* ipv4 = (struct sockaddr_in*)result->ai_addr;
+                        if (NULL != inet_ntop(AF_INET, &(ipv4->sin_addr), address, INET_ADDRSTRLEN)) {
+                            service.setAddress(std::move(std::string(address)));
+                        }
+                    } else if (result->ai_family == AF_INET6) {
+                        char address[INET6_ADDRSTRLEN];
+                        struct sockaddr_in6* ipv6 = (struct sockaddr_in6*)result->ai_addr;
+                        if (NULL != inet_ntop(AF_INET6, &(ipv6->sin6_addr), address, INET6_ADDRSTRLEN)) {
+                            service.setAddress(std::move(std::string(address)));
+                        }
+                    }
+                    freeaddrinfo(result);
                 }
                 service.setName(std::move(name));
                 service.setType(std::move(rr->type));
