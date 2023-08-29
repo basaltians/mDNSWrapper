@@ -254,6 +254,60 @@ public:
     std::atomic<bool> processEvents;
     DNSServiceRef connectionRef;
 
+    struct RegisterARecord
+    {
+        DNSServiceRef serviceRef = nullptr;
+        DNSRecordRef dnsRecordRef = nullptr;
+        MDNSService::Id serviceId = MDNSService::NO_SERVICE;
+        std::string hostName;
+        MDNSManager::PImpl &pimpl;
+        ErrorCodeHandler cb;
+
+        RegisterARecord(const std::string &hostName, MDNSManager::PImpl &pimpl, ErrorCodeHandler cb)
+                : hostName(hostName), pimpl(pimpl), cb(cb)
+        { }
+
+        /**
+         * register callback
+         */
+        static void DNSSD_API registerARecordCB(
+                DNSServiceRef                       sdRef,
+                DNSRecordRef                        recRef,
+                DNSServiceFlags                     flags,
+                DNSServiceErrorType                 errorCode,
+                void                                *context )
+        {
+            RegisterARecord *self = static_cast<RegisterARecord*>(context);
+
+            //std::cerr << "REGISTER A-RECORD CALLBACK "<<self->hostName<<" EC "<<errorCode<<" FLAGS "<<flags<<" PTR "<<sdRef<<" self = "<<self<<std::endl;
+
+            if (errorCode == kDNSServiceErr_NoError)
+            {
+                if (self->cb) {
+                    self->cb(RegisterError::MDNSRegErr_NoError, {});
+                }
+            }
+            else if (errorCode == kDNSServiceErr_NameConflict)
+            {
+                if (self->cb) {
+                    self->cb(RegisterError::MDNSRegErr_NameConflict,
+                             std::string("hostname already in use: ") + self->hostName);
+                }
+                self->pimpl.error(std::string("Register A record callback: name conflict!"));
+            }
+            else
+            {
+                if (self->cb) {
+                    self->cb(RegisterError::MDNSRegErr_Unknown, getDnsSdErrorName(errorCode));
+                }
+                self->pimpl.error(std::string("Register A record callback: ")+getDnsSdErrorName(errorCode));
+            }
+        }
+    };
+
+    typedef std::unordered_map<MDNSService::Id, std::unique_ptr<RegisterARecord>> RegisterARecordMap;
+    RegisterARecordMap registerARecordMap;
+
     struct RegisterRecord
     {
         DNSServiceRef serviceRef;
@@ -689,6 +743,98 @@ void MDNSManager::setErrorHandler(MDNSManager::ErrorHandler handler)
 {
     ImplLockGuard g(pimpl_->mutex);
     pimpl_->errorHandler = handler;
+}
+
+void MDNSManager::registerAddress(MDNSService &service,
+                                  ErrorCodeHandler async_result)
+{
+    if (service.getId() != MDNSService::NO_SERVICE)
+        throw std::logic_error("Host address was already registered");
+
+    if (service.getHost().empty() || service.getAddress().empty())
+        throw std::logic_error("hostname or address can't be empty");
+
+    struct sockaddr_storage hostaddr;
+    memset(&hostaddr, 0, sizeof(hostaddr));
+    struct addrinfo *addrs = nullptr;
+    if (getaddrinfo(service.getAddress().c_str(), nullptr, nullptr, &addrs) == 0 && addrs) {
+        size_t addr_len = (addrs->ai_addr->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6)
+                                                                  : sizeof(struct sockaddr_in);
+        memcpy(&hostaddr, addrs->ai_addr, addr_len);
+    }
+    if (addrs) {
+        freeaddrinfo(addrs);
+    }
+
+    std::unique_ptr<MDNSManager::PImpl::RegisterARecord> arec(
+            new MDNSManager::PImpl::RegisterARecord(service.getHost(), *pimpl_, std::move(async_result)));
+
+    {
+        ImplLockGuard g(pimpl_->mutex);
+
+        DNSServiceRef sdRef = pimpl_->connectionRef;
+        uint32_t ttl = 240;
+        DNSServiceFlags flags = kDNSServiceFlagsShareConnection | kDNSServiceFlagsUnique;
+
+        DNSServiceErrorType err;
+        if (hostaddr.ss_family == AF_INET) {
+            err = DNSServiceRegisterRecord(sdRef,
+                                           &arec->dnsRecordRef,
+                                           flags,
+                                           toDnsSdInterfaceIndex(service.getInterfaceIndex()),
+                                           service.getHost().c_str(),
+                                           kDNSServiceType_A,
+                                           kDNSServiceClass_IN,
+                                           sizeof(struct in_addr),
+                                           &((struct sockaddr_in *) &hostaddr)->sin_addr,
+                                           ttl,
+                                           &MDNSManager::PImpl::RegisterARecord::registerARecordCB,
+                                           arec.get());
+        } else if (hostaddr.ss_family == AF_INET6) {
+            err = DNSServiceRegisterRecord(sdRef,
+                                           &arec->dnsRecordRef,
+                                           flags,
+                                           toDnsSdInterfaceIndex(service.getInterfaceIndex()),
+                                           service.getHost().c_str(),
+                                           kDNSServiceType_AAAA,
+                                           kDNSServiceClass_IN,
+                                           sizeof(struct in6_addr),
+                                           &((struct sockaddr_in6 *) &hostaddr)->sin6_addr,
+                                           ttl,
+                                           &MDNSManager::PImpl::RegisterARecord::registerARecordCB,
+                                           arec.get());
+        } else {
+            err = kDNSServiceErr_BadParam;
+        }
+
+        if (err != kDNSServiceErr_NoError)
+            throw DnsSdError(std::string("DNSServiceRegisterRecord: ") + getDnsSdErrorName(err));
+
+        arec->serviceRef = sdRef;
+        const MDNSService::Id serviceId = getNewServiceId();
+        arec->serviceId = serviceId;
+        setServiceId(service, serviceId);
+        pimpl_->registerARecordMap.insert(std::make_pair(serviceId, std::move(arec)));
+    }
+}
+
+void MDNSManager::unregisterAddress(MDNSService &service)
+{
+    if (service.getId() == MDNSService::NO_SERVICE)
+        throw std::logic_error("Service was not registered");
+
+    ImplLockGuard g(pimpl_->mutex);
+
+    const int flags = 0;
+    auto it = pimpl_->registerARecordMap.find(service.getId());
+    if (it != pimpl_->registerARecordMap.end())
+    {
+        // try and unregister, don't care about result
+        DNSServiceRemoveRecord(it->second->serviceRef, it->second->dnsRecordRef, flags);
+        // then remove our references
+        pimpl_->registerARecordMap.erase(it);
+        setServiceId(service, MDNSService::NO_SERVICE);
+    }
 }
 
 void MDNSManager::registerService(MDNSService &service)

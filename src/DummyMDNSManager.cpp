@@ -47,20 +47,25 @@ void MDNSManager::setErrorHandler(MDNSManager::ErrorHandler handler)
 {
 }
 
-void MDNSManager::registerService(MDNSService &service)
+void MDNSManager::registerAddress(MDNSService &service,
+                                  ErrorCodeHandler async_result)
 {
-
 }
 
+void MDNSManager::unregisterAddress(MDNSService &service)
+{
+}
+
+void MDNSManager::registerService(MDNSService &service)
+{
+}
 
 void MDNSManager::updateService(MDNSService &service)
 {
-
 }
 
 void MDNSManager::unregisterService(MDNSService &service)
 {
-
 }
 
 void MDNSManager::registerServiceBrowser(MDNSInterfaceIndex interfaceIndex,

@@ -330,6 +330,13 @@ public:
 
     typedef std::function<void (const std::string &errorMsg)> ErrorHandler;
 
+    enum RegisterError {
+        MDNSRegErr_NoError = 0,
+        MDNSRegErr_Unknown = 1,
+        MDNSRegErr_NameConflict = 2,
+    };
+    typedef std::function<void(RegisterError errc, const std::string &errorMsg)> ErrorCodeHandler;
+
     MDNSManager();
 
     ~MDNSManager();
@@ -350,6 +357,11 @@ public:
      * Register handler for errors. Handler is executed in the event loop thread.
      */
     void setErrorHandler(ErrorHandler handler);
+
+    void registerAddress(MDNSService &service,
+                         ErrorCodeHandler async_result = {});
+
+    void unregisterAddress(MDNSService &service);
 
     void registerService(MDNSService &service);
 

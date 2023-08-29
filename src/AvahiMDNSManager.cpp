@@ -861,6 +861,17 @@ void MDNSManager::setErrorHandler(MDNSManager::ErrorHandler handler)
     pimpl_->errorHandler = handler;
 }
 
+void MDNSManager::registerAddress(MDNSService &service,
+                                  ErrorCodeHandler async_result)
+{
+    // TODO
+}
+
+void MDNSManager::unregisterAddress(MDNSService &service)
+{
+    // TODO
+}
+
 void MDNSManager::registerService(MDNSService &service)
 {
     if (service.getId() != MDNSService::NO_SERVICE)
