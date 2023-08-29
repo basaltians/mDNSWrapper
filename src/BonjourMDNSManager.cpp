@@ -477,13 +477,13 @@ public:
                         char address[INET_ADDRSTRLEN];
                         struct sockaddr_in* ipv4 = (struct sockaddr_in*)result->ai_addr;
                         if (NULL != inet_ntop(AF_INET, &(ipv4->sin_addr), address, INET_ADDRSTRLEN)) {
-                            service.setAddress(std::move(std::string(address)));
+                            service.setAddress(std::string(address));
                         }
                     } else if (result->ai_family == AF_INET6) {
                         char address[INET6_ADDRSTRLEN];
                         struct sockaddr_in6* ipv6 = (struct sockaddr_in6*)result->ai_addr;
                         if (NULL != inet_ntop(AF_INET6, &(ipv6->sin6_addr), address, INET6_ADDRSTRLEN)) {
-                            service.setAddress(std::move(std::string(address)));
+                            service.setAddress(std::string(address));
                         }
                     }
                     freeaddrinfo(result);
