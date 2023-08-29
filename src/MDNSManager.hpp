@@ -168,7 +168,7 @@ public:
 
     MDNSService & setAddress(const std::string & address)
     {
-        host_ = address;
+        address_ = address;
         return *this;
     }
 
