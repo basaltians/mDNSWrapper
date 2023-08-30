@@ -861,6 +861,19 @@ void MDNSManager::setErrorHandler(MDNSManager::ErrorHandler handler)
     pimpl_->errorHandler = handler;
 }
 
+void MDNSManager::registerAddress(MDNSService &service,
+                                  ErrorCodeHandler async_result)
+{
+    // TODO
+    throw std::logic_error("MDNSManager::registerAddress not yet implemented for Avahi");
+}
+
+void MDNSManager::unregisterAddress(MDNSService &service)
+{
+    // TODO
+    throw std::logic_error("MDNSManager::unregisterAddress not yet implemented for Avahi");
+}
+
 void MDNSManager::registerService(MDNSService &service)
 {
     if (service.getId() != MDNSService::NO_SERVICE)
