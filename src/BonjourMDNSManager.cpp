@@ -562,6 +562,53 @@ public:
     typedef std::unordered_multimap<MDNSServiceBrowser::Ptr, std::unique_ptr<BrowserRecord> > BrowserRecordMap;
     BrowserRecordMap browserRecordMap;
 
+    struct QueryRecord
+    {
+        MDNSServiceBrowser::Ptr handler;
+        DNSServiceRef serviceRef;
+        MDNSManager::PImpl &pimpl;
+
+        QueryRecord(const MDNSServiceBrowser::Ptr &handler, const DNSServiceRef& serviceRef, MDNSManager::PImpl &pimpl)
+            : handler(handler), serviceRef(serviceRef), pimpl(pimpl)
+        {
+
+        }
+
+        ~QueryRecord()
+        {
+            DNSServiceRefDeallocate(serviceRef);
+        }
+
+        static void DNSSD_API queryCB(DNSServiceRef sdRef,
+                                      DNSServiceFlags flags,
+                                      uint32_t interfaceIndex,
+                                      DNSServiceErrorType errorCode,
+                                      const char *fullname,
+                                      uint16_t rrtype,
+                                      uint16_t rrclass,
+                                      uint16_t rdlen,
+                                      const void *rdata,
+                                      uint32_t ttl,
+                                      void *context)
+        {
+            if (errorCode != kDNSServiceErr_NoError) {
+                return;
+            }
+
+            auto *self = static_cast<BrowserRecord*>(context);
+            self->handler->onQueryReply({
+                .fullname = fullname,
+                .interfaceIndex = fromDnsSdInterfaceIndex(interfaceIndex),
+                .rrtype = rrtype,
+                .rrclass = rrclass,
+                .data = std::string(static_cast<const char*>(rdata), rdlen)
+            });
+        }
+    };
+
+    typedef std::unordered_multimap<MDNSServiceBrowser::Ptr, std::unique_ptr<QueryRecord>> QueryRecordMap;
+    QueryRecordMap queryRecordMap;
+
     MDNSManager::AlternativeServiceNameHandler alternativeServiceNameHandler;
     MDNSManager::ErrorHandler errorHandler;
     std::vector<std::string> errorLog;
@@ -700,6 +747,29 @@ public:
             throw DnsSdError(std::string("DNSServiceBrowse: ")+getDnsSdErrorName(err));
 
         browserRecordMap.insert(std::make_pair(brec->handler, std::move(brec)));
+    }
+
+    void registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
+                              uint32_t interfaceIndex,
+                              const char* fullname,
+                              uint16_t rrtype,
+                              uint16_t rrclass)
+    {
+        std::unique_ptr<QueryRecord> qrec(new QueryRecord(browser, connectionRef, *this));
+        DNSServiceErrorType err =
+            DNSServiceQueryRecord(&qrec->serviceRef,
+                                  kDNSServiceFlagsForceMulticast,
+                                  interfaceIndex,
+                                  fullname,
+                                  rrtype,
+                                  rrclass,
+                                  &QueryRecord::queryCB,
+                                  qrec.get());
+
+        if (err != kDNSServiceErr_NoError) {
+            throw DnsSdError(std::string("DNSServiceQuery: ")+getDnsSdErrorName(err));
+        }
+        queryRecordMap.insert(std::make_pair(qrec->handler, std::move(qrec)));
     }
 
 };
@@ -959,6 +1029,27 @@ void MDNSManager::unregisterServiceBrowser(const MDNSServiceBrowser::Ptr & brows
     }
     pimpl_->browserRecordMap.erase(browser);
 }
+
+
+void MDNSManager::registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
+                                       MDNSInterfaceIndex interfaceIndex,
+                                       const char* fullname,
+                                       uint16_t rrtype,
+                                       uint16_t rrclass)
+{
+    ImplLockGuard g(pimpl_->mutex);
+    pimpl_->registerServiceQuery(browser,
+                                 toDnsSdInterfaceIndex(interfaceIndex),
+                                 fullname,
+                                 rrtype,
+                                 rrclass);
+}
+
+void MDNSManager::unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser)
+{
+    pimpl_->queryRecordMap.erase(browser);
+}
+
 
 std::vector<std::string> MDNSManager::getErrorLog()
 {

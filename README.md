@@ -18,7 +18,7 @@ A wrapper library for accessing [mDNS](https://en.wikipedia.org/wiki/Multicast_D
 
 ### Building
 
-Compile with a C++11 compilant compiler:
+Compile with a C++11 compliant compiler:
 ```
 cmake .
 make

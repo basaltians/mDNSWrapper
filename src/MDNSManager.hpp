@@ -309,6 +309,15 @@ private:
     Id id_;                               // registered service ID or NO_SERVICE
 };
 
+struct MDNSServiceQueryReply
+{
+    std::string fullname;
+    MDNSInterfaceIndex interfaceIndex;
+    uint16_t rrtype;
+    uint16_t rrclass;
+    std::string data;
+};
+
 class MDNSServiceBrowser
 {
 public:
@@ -318,6 +327,8 @@ public:
     virtual void onNewService(const MDNSService &service) { }
 
     virtual void onRemovedService(const std::string &name, const std::string &type, const std::string &domain, MDNSInterfaceIndex interfaceIndex) { }
+
+    virtual void onQueryReply(const MDNSServiceQueryReply& queryReply) { }
 
     virtual ~MDNSServiceBrowser() { }
 };
@@ -345,7 +356,7 @@ public:
 
     void stop();
 
-    // Wait unitl manager is stopped from different thread
+    // Wait until manager is stopped from different thread
     void wait();
 
     /**
@@ -414,6 +425,14 @@ public:
      * Unregister service
      */
     void unregisterServiceBrowser(const MDNSServiceBrowser::Ptr & browser);
+
+    void registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
+                              MDNSInterfaceIndex interfaceIndex,
+                              const char* fullname,
+                              uint16_t rrtype,
+                              uint16_t rrclass);
+
+    void unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser);
 
     /**
      * Returns all error messages collected from last call to getErrorLog().
