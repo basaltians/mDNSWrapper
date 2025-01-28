@@ -976,6 +976,22 @@ void MDNSManager::unregisterServiceBrowser(const MDNSServiceBrowser::Ptr & brows
     pimpl_->browserRecords.erase(browser);
 }
 
+void MDNSManager::registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
+                                       MDNSInterfaceIndex interfaceIndex,
+                                       const char* fullname,
+                                       uint16_t rrtype,
+                                       uint16_t rrclass)
+{
+    // TODO
+    throw std::logic_error("MDNSManager::registerServiceQuery not yet implemented for Avahi");
+}
+
+void MDNSManager::unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser, const char* fullname)
+{
+    // TODO
+    throw std::logic_error("MDNSManager::unregisterServiceQuery not yet implemented for Avahi");
+}
+
 std::vector<std::string> MDNSManager::getErrorLog()
 {
 

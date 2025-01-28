@@ -81,6 +81,19 @@ void MDNSManager::unregisterServiceBrowser(const MDNSServiceBrowser::Ptr & brows
 {
 }
 
+void MDNSManager::registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
+                                       MDNSInterfaceIndex interfaceIndex,
+                                       const char* fullname,
+                                       uint16_t rrtype,
+                                       uint16_t rrclass)
+{
+}
+
+void MDNSManager::unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser, const char* fullname)
+{
+}
+
+
 std::vector<std::string> MDNSManager::getErrorLog()
 {
     std::vector<std::string> dummy;
