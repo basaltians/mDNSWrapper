@@ -567,16 +567,18 @@ public:
         MDNSServiceBrowser::Ptr handler;
         DNSServiceRef serviceRef;
         MDNSManager::PImpl &pimpl;
+        std::string fullname;
 
-        QueryRecord(const MDNSServiceBrowser::Ptr &handler, const DNSServiceRef& serviceRef, MDNSManager::PImpl &pimpl)
-            : handler(handler), serviceRef(serviceRef), pimpl(pimpl)
+        QueryRecord(const MDNSServiceBrowser::Ptr &handler,
+                    DNSServiceRef serviceRef,
+                    MDNSManager::PImpl &pimpl,
+                    const char* fullname)
+            : handler(handler)
+            , serviceRef(serviceRef)
+            , pimpl(pimpl)
+            , fullname(fullname)
         {
-
-        }
-
-        ~QueryRecord()
-        {
-            DNSServiceRefDeallocate(serviceRef);
+            // Empty
         }
 
         static void DNSSD_API queryCB(DNSServiceRef sdRef,
@@ -591,17 +593,19 @@ public:
                                       uint32_t ttl,
                                       void *context)
         {
-            if (errorCode != kDNSServiceErr_NoError) {
+            if (errorCode != kDNSServiceErr_NoError)
                 return;
-            }
 
-            auto *self = static_cast<BrowserRecord*>(context);
+            auto data = rdlen > 0 ? std::string(static_cast<const char*>(rdata), rdlen-1)
+                                  : std::string{};
+
+            auto* self = static_cast<BrowserRecord*>(context);
             self->handler->onQueryReply({
                 .fullname = fullname,
                 .interfaceIndex = fromDnsSdInterfaceIndex(interfaceIndex),
                 .rrtype = rrtype,
                 .rrclass = rrclass,
-                .data = std::string(static_cast<const char*>(rdata), rdlen)
+                .data = data
             });
         }
     };
@@ -755,10 +759,10 @@ public:
                               uint16_t rrtype,
                               uint16_t rrclass)
     {
-        std::unique_ptr<QueryRecord> qrec(new QueryRecord(browser, connectionRef, *this));
+        std::unique_ptr<QueryRecord> qrec(new QueryRecord(browser, connectionRef, *this, fullname));
         DNSServiceErrorType err =
             DNSServiceQueryRecord(&qrec->serviceRef,
-                                  kDNSServiceFlagsForceMulticast,
+                                  kDNSServiceFlagsShareConnection,
                                   interfaceIndex,
                                   fullname,
                                   rrtype,
@@ -766,9 +770,9 @@ public:
                                   &QueryRecord::queryCB,
                                   qrec.get());
 
-        if (err != kDNSServiceErr_NoError) {
+        if (err != kDNSServiceErr_NoError)
             throw DnsSdError(std::string("DNSServiceQuery: ")+getDnsSdErrorName(err));
-        }
+
         queryRecordMap.insert(std::make_pair(qrec->handler, std::move(qrec)));
     }
 
@@ -1045,9 +1049,22 @@ void MDNSManager::registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
                                  rrclass);
 }
 
-void MDNSManager::unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser)
+void MDNSManager::unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser, const char* fullname)
 {
-    pimpl_->queryRecordMap.erase(browser);
+    ImplLockGuard g(pimpl_->mutex);
+    auto range = pimpl_->queryRecordMap.equal_range(browser);
+    for (auto it = range.first, eit = range.second; it != eit;)
+    {
+        if (fullname == "" || it->second->fullname == fullname)
+        {
+            DNSServiceRefDeallocate(it->second->serviceRef);
+            it = pimpl_->queryRecordMap.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 

@@ -432,7 +432,8 @@ public:
                               uint16_t rrtype,
                               uint16_t rrclass);
 
-    void unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser);
+    // If fullname is empty, all running queries for the browser are canceled.
+    void unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser, const char* fullname = "");
 
     /**
      * Returns all error messages collected from last call to getErrorLog().
