@@ -8,13 +8,14 @@
 #ifndef MDNSMANAGER_HPP_INCLUDED
 #define MDNSMANAGER_HPP_INCLUDED
 
-#include <memory>
-#include <functional>
-#include <string>
-#include <vector>
-#include <utility>
-#include <mutex>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace MDNS
 {
@@ -316,6 +317,12 @@ struct MDNSServiceQueryReply
     uint16_t rrtype;
     uint16_t rrclass;
     std::string data;
+};
+
+class MDNSError : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
 };
 
 class MDNSServiceBrowser

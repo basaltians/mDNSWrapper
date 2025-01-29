@@ -35,7 +35,6 @@ typedef int pid_t;
 #include <cctype>
 #include <memory>
 #include <sstream>
-#include <stdexcept>
 #include <unordered_map>
 #include <algorithm>
 #include <utility>
@@ -225,22 +224,27 @@ const char * getDnsSdErrorName(DNSServiceErrorType error)
         case kDNSServiceErr_NATTraversal: return "kDNSServiceErr_NATTraversal";
         case kDNSServiceErr_DoubleNAT: return "kDNSServiceErr_DoubleNAT";
         case kDNSServiceErr_BadTime: return "kDNSServiceErr_BadTime";
+        case kDNSServiceErr_BadSig: return "kDNSServiceErr_BadSig";
+        case kDNSServiceErr_BadKey: return "kDNSServiceErr_BadKey";
+        case kDNSServiceErr_Transient: return "kDNSServiceErr_Transient";
+        case kDNSServiceErr_ServiceNotRunning: return "kDNSServiceErr_ServiceNotRunning";
+        case kDNSServiceErr_NATPortMappingUnsupported: return "kDNSServiceErr_NATPortMappingUnsupported";
+        case kDNSServiceErr_NATPortMappingDisabled: return "kDNSServiceErr_NATPortMappingDisabled";
+        case kDNSServiceErr_NoRouter: return "kDNSServiceErr_NoRouter";
+        case kDNSServiceErr_PollingMode: return "kDNSServiceErr_PollingMode";
+        case kDNSServiceErr_Timeout: return "kDNSServiceErr_Timeout";
+        case kDNSServiceErr_DefunctConnection: return "kDNSServiceErr_DefunctConnection";
+        case kDNSServiceErr_PolicyDenied: return "kDNSServiceErr_PolicyDenied";
+        case kDNSServiceErr_NotPermitted: return "kDNSServiceErr_NotPermitted";
+        case kDNSServiceErr_StaleData: return "kDNSServiceErr_StaleData";
         default: return "Unknown";
     }
 }
 
-class DnsSdError: public std::runtime_error
+class DnsSdError: public MDNSError
 {
 public:
-
-    DnsSdError(const std::string &message)
-        : std::runtime_error(message)
-    {
-    }
-
-    virtual ~DnsSdError() noexcept
-    {
-    }
+    using MDNSError::MDNSError;
 };
 
 } // unnamed namespace
@@ -695,7 +699,7 @@ public:
     {
         if (thread.joinable())
         {
-            throw std::logic_error("MDNSManager already running");
+            throw MDNSError("MDNSManager already running");
         }
         processEvents = true;
         thread = std::move(std::thread(&PImpl::eventLoop, this));
@@ -823,10 +827,10 @@ void MDNSManager::registerAddress(MDNSService &service,
                                   ErrorCodeHandler async_result)
 {
     if (service.getId() != MDNSService::NO_SERVICE)
-        throw std::logic_error("Host address was already registered");
+        throw MDNSError("Host address was already registered");
 
     if (service.getHost().empty() || service.getAddress().empty())
-        throw std::logic_error("hostname or address can't be empty");
+        throw MDNSError("hostname or address can't be empty");
 
     struct sockaddr_storage hostaddr;
     memset(&hostaddr, 0, sizeof(hostaddr));
@@ -895,7 +899,7 @@ void MDNSManager::registerAddress(MDNSService &service,
 void MDNSManager::unregisterAddress(MDNSService &service)
 {
     if (service.getId() == MDNSService::NO_SERVICE)
-        throw std::logic_error("Service was not registered");
+        throw MDNSError("Service was not registered");
 
     ImplLockGuard g(pimpl_->mutex);
 
@@ -914,7 +918,7 @@ void MDNSManager::unregisterAddress(MDNSService &service)
 void MDNSManager::registerService(MDNSService &service)
 {
     if (service.getId() != MDNSService::NO_SERVICE)
-        throw std::logic_error("Service was already registered");
+        throw MDNSError("Service was already registered");
 
     bool invalidFields;
     std::string txtRecordData = encodeTxtRecordData(service.getTxtRecords(), invalidFields);
@@ -976,7 +980,7 @@ void MDNSManager::unregisterService(MDNSService &service)
 {
     ImplLockGuard g(pimpl_->mutex);
     if (service.getId() == MDNSService::NO_SERVICE)
-        throw std::logic_error("Service was not registered");
+        throw MDNSError("Service was not registered");
     auto it = pimpl_->registerRecordMap.find(service.getId());
     if (it != pimpl_->registerRecordMap.end())
     {
@@ -994,7 +998,7 @@ void MDNSManager::registerServiceBrowser(const MDNSServiceBrowser::Ptr & browser
                                          MDNSProto protocol) // not supported (yet)
 {
     if (type.empty())
-        throw std::logic_error("type argument can't be empty");
+        throw MDNSError("type argument can't be empty");
 
     {
         ImplLockGuard g(pimpl_->mutex);
