@@ -8,13 +8,14 @@
 #ifndef MDNSMANAGER_HPP_INCLUDED
 #define MDNSMANAGER_HPP_INCLUDED
 
-#include <memory>
-#include <functional>
-#include <string>
-#include <vector>
-#include <utility>
-#include <mutex>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace MDNS
 {
@@ -309,6 +310,21 @@ private:
     Id id_;                               // registered service ID or NO_SERVICE
 };
 
+struct MDNSServiceQueryReply
+{
+    std::string fullname;
+    MDNSInterfaceIndex interfaceIndex;
+    uint16_t rrtype;
+    uint16_t rrclass;
+    std::string data;
+};
+
+class MDNSError : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
+};
+
 class MDNSServiceBrowser
 {
 public:
@@ -318,6 +334,8 @@ public:
     virtual void onNewService(const MDNSService &service) { }
 
     virtual void onRemovedService(const std::string &name, const std::string &type, const std::string &domain, MDNSInterfaceIndex interfaceIndex) { }
+
+    virtual void onQueryReply(const MDNSServiceQueryReply& queryReply) { }
 
     virtual ~MDNSServiceBrowser() { }
 };
@@ -345,7 +363,7 @@ public:
 
     void stop();
 
-    // Wait unitl manager is stopped from different thread
+    // Wait until manager is stopped from different thread
     void wait();
 
     /**
@@ -414,6 +432,15 @@ public:
      * Unregister service
      */
     void unregisterServiceBrowser(const MDNSServiceBrowser::Ptr & browser);
+
+    void registerServiceQuery(const MDNSServiceBrowser::Ptr& browser,
+                              MDNSInterfaceIndex interfaceIndex,
+                              const char* fullname,
+                              uint16_t rrtype,
+                              uint16_t rrclass);
+
+    // If fullname is empty, all running queries for the browser are canceled.
+    void unregisterServiceQuery(const MDNSServiceBrowser::Ptr& browser, const char* fullname = "");
 
     /**
      * Returns all error messages collected from last call to getErrorLog().
