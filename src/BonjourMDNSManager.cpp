@@ -600,17 +600,19 @@ public:
             if (errorCode != kDNSServiceErr_NoError)
                 return;
 
-            auto data = rdlen > 0 ? std::string(static_cast<const char*>(rdata), rdlen-1)
-                                  : std::string{};
-
             auto* self = static_cast<BrowserRecord*>(context);
-            self->handler->onQueryReply({
-                .fullname = fullname,
-                .interfaceIndex = fromDnsSdInterfaceIndex(interfaceIndex),
-                .rrtype = rrtype,
-                .rrclass = rrclass,
-                .data = data
-            });
+            if (self && self->handler) {
+                auto data = rdlen > 0 ? std::string(static_cast<const char*>(rdata), rdlen-1)
+                                      : std::string{};
+
+                self->handler->onQueryReply({
+                    .fullname = fullname,
+                    .interfaceIndex = fromDnsSdInterfaceIndex(interfaceIndex),
+                    .rrtype = rrtype,
+                    .rrclass = rrclass,
+                    .data = data
+                });
+            }
         }
     };
 
