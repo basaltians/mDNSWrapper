@@ -257,6 +257,7 @@ public:
     ImplMutex mutex;
     std::atomic<bool> processEvents;
     DNSServiceRef connectionRef;
+    int wakePipe[2]; // pipe to wake up select() immediately
 
     struct RegisterARecord
     {
@@ -624,18 +625,29 @@ public:
     std::vector<std::string> errorLog;
 
     PImpl()
-        : thread(), mutex(), processEvents(true), connectionRef(0)
+        : thread(), mutex(), processEvents(true), connectionRef(0), wakePipe{-1, -1}
     {
+        if (pipe(wakePipe) == -1)
+            throw DnsSdError(std::string("pipe: ") + strerror(errno));
+
         DNSServiceErrorType errorCode = DNSServiceCreateConnection(&connectionRef);
 
         if (errorCode != kDNSServiceErr_NoError)
+        {
+            close(wakePipe[0]);
+            close(wakePipe[1]);
             throw DnsSdError(std::string("DNSServiceCreateConnection: ")+getDnsSdErrorName(errorCode));
+        }
     }
 
     ~PImpl()
     {
         stop();
         DNSServiceRefDeallocate(connectionRef);
+        if (wakePipe[0] != -1)
+            close(wakePipe[0]);
+        if (wakePipe[1] != -1)
+            close(wakePipe[1]);
     }
 
     void eventLoop()
@@ -653,7 +665,7 @@ public:
             return;
         }
 
-        int nfds = fd + 1;
+        int nfds = std::max(fd, wakePipe[0]) + 1;
         fd_set readfds;
         struct timeval tv;
         DNSServiceErrorType err;
@@ -670,10 +682,19 @@ public:
             tv.tv_sec = 1; // wakes up every 1 sec if no socket activity occurs
             tv.tv_usec = 0;
 
-            // wait for pending data or timeout to elapse:
+            // 4. Add wake pipe to detect stop() calls
+            FD_SET(wakePipe[0], &readfds);
+
+            // wait for pending data (timeout or wake pipe to handle immediate wakeup)
             int result = select(nfds, &readfds, (fd_set*) 0, (fd_set*) 0, &tv);
             if (result > 0)
             {
+                // Check if we were woken up by stop()
+                if (FD_ISSET(wakePipe[0], &readfds))
+                {        
+                    break;
+                }
+
                 {
                     ImplLockGuard g(mutex);
                     err = kDNSServiceErr_NoError;
@@ -686,9 +707,10 @@ public:
             else if (result == 0)
             {
                 // timeout elapsed but no fd-s were signalled.
-            }
-            else
-            {
+            } else {
+                if (errno == EINTR)
+                    continue;
+                
                 error(std::string("select() returned ")+std::to_string(result)+" errno "+
                       std::to_string(errno)+" "+strerror(errno));
             }
@@ -714,6 +736,12 @@ public:
             return;
         }
         processEvents = false;
+        // Wake up the event loop immediately
+        char c = 0;
+        if (write(wakePipe[1], &c, 1) == -1)
+        {
+            error(std::string("write() failed ")+" errno "+std::to_string(errno)+" "+strerror(errno));
+        }
         thread.join();
     }
 
