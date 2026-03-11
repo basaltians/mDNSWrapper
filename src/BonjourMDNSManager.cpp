@@ -600,7 +600,7 @@ public:
             if (errorCode != kDNSServiceErr_NoError)
                 return;
 
-            auto* self = static_cast<BrowserRecord*>(context);
+            auto* self = static_cast<QueryRecord*>(context);
             if (self && self->handler) {
                 auto data = rdlen > 0 ? std::string(static_cast<const char*>(rdata), rdlen-1)
                                       : std::string{};
