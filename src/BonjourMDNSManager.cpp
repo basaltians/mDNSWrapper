@@ -392,10 +392,10 @@ public:
         {
             std::string type;
             std::string domain;
-            BrowserRecord *parent;
+            MDNSServiceBrowser::Ptr handler;
 
-            ResolveRecord(BrowserRecord *parent, std::string &&type, std::string &&domain)
-                : type(std::move(type)), domain(std::move(domain)), parent(parent)
+            ResolveRecord(MDNSServiceBrowser::Ptr handler, std::string &&type, std::string &&domain)
+                : type(std::move(type)), domain(std::move(domain)), handler(std::move(handler))
             {
             }
         };
@@ -456,7 +456,7 @@ public:
                 // standard response
                 if (flags & kDNSServiceFlagsAdd)
                 {
-                    std::unique_ptr<ResolveRecord> resrec(new ResolveRecord(self, std::move(type), std::move(domain)));
+                    std::unique_ptr<ResolveRecord> resrec(new ResolveRecord(self->handler, std::move(type), std::move(domain)));
                     DNSServiceRef resolveRef = self->pimpl.connectionRef;
                     DNSServiceErrorType err =
                         DNSServiceResolve(&resolveRef,
@@ -503,9 +503,8 @@ public:
                 void *context )
         {
             ResolveRecord *rr = static_cast<ResolveRecord*>(context);
-            BrowserRecord *self = static_cast<BrowserRecord*>(rr->parent);
 
-            if (self->handler)
+            if (rr->handler)
             {
                 MDNSService service;
                 service.setInterfaceIndex(fromDnsSdInterfaceIndex(interfaceIndex));
@@ -554,7 +553,7 @@ public:
                 service.setPort(ntohs(port));
                 service.setTxtRecords(decodeTxtRecordData(txtLen, txtRecord));
 
-                self->handler->onNewService(service);
+                rr->handler->onNewService(service);
             }
 
             delete rr;
@@ -601,7 +600,7 @@ public:
             if (errorCode != kDNSServiceErr_NoError)
                 return;
 
-            auto* self = static_cast<BrowserRecord*>(context);
+            auto* self = static_cast<QueryRecord*>(context);
             if (self && self->handler) {
                 auto data = rdlen > 0 ? std::string(static_cast<const char*>(rdata), rdlen-1)
                                       : std::string{};
