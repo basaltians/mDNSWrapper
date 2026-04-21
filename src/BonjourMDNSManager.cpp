@@ -26,6 +26,7 @@ typedef int pid_t;
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <deque>
 
 #include <cerrno>
 #include <cstring>
@@ -621,7 +622,8 @@ public:
 
     MDNSManager::AlternativeServiceNameHandler alternativeServiceNameHandler;
     MDNSManager::ErrorHandler errorHandler;
-    std::vector<std::string> errorLog;
+    static constexpr size_t kMaxErrorLogSize = 100;
+    std::deque<std::string> errorLog;
 
     PImpl()
         : thread(), mutex(), processEvents(true), connectionRef(0), wakePipe{-1, -1}
@@ -700,8 +702,13 @@ public:
                     if (FD_ISSET(fd, &readfds))
                         err = DNSServiceProcessResult(connectionRef);
                 }
-                if (err != kDNSServiceErr_NoError)
+                if (err != kDNSServiceErr_NoError) {
                     error(std::string("DNSServiceProcessResult returned ")+getDnsSdErrorName(err));
+                    if (err == kDNSServiceErr_BadReference) {
+                        // Bad reference doesn't recover, exit the loop
+                        break;
+                    }
+                }
             }
             else if (result == 0)
             {
@@ -759,6 +766,8 @@ public:
 
         if (errorHandler)
             errorHandler(errorMsg);
+        if (errorLog.size() >= kMaxErrorLogSize)
+            errorLog.pop_front();
         errorLog.push_back(std::move(errorMsg));
     }
 
@@ -1106,7 +1115,11 @@ std::vector<std::string> MDNSManager::getErrorLog()
     std::vector<std::string> result;
     {
         ImplLockGuard g(pimpl_->mutex);
-        result.swap(pimpl_->errorLog);
+        result.reserve(pimpl_->errorLog.size());
+        for (auto& e : pimpl_->errorLog) {
+            result.push_back(std::move(e));
+        }
+        pimpl_->errorLog.clear();
     }
     return result;
 }
